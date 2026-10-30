@@ -3,7 +3,7 @@ module github.com/Rass0l/storage-boxes
 go 1.27.3
 
 require (
-	github.com/jackc/pgx/v5 v5.9.2
+	github.com/jackc/pgx/v5 v5.11.0
 	golang.org/x/crypto v0.56.0
 )
 
