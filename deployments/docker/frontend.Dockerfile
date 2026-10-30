@@ -6,7 +6,7 @@ COPY web/package-lock.json* ./
 COPY web/ ./
 RUN npm ci --no-fund --no-audit && npm run build
 
-FROM nginx:1.30.6-alpine
+FROM nginx:1.31.0-alpine
 COPY deployments/docker/nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY LICENSE NOTICE THIRD_PARTY_NOTICES.md /usr/share/licenses/storage-boxes/
