@@ -1,0 +1,19 @@
+get:
+  summary: Resolve the current session's user, if any.
+  responses:
+    '200':
+      description: Session resolved.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [user]
+            properties:
+              user:
+                $ref: '../schemas/user.yaml'
+    '401':
+      description: Not authenticated.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/error-response.yaml'

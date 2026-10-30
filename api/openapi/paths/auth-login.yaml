@@ -1,0 +1,38 @@
+post:
+  summary: Create an authenticated identity session.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [email, password]
+          properties:
+            email:
+              type: string
+              format: email
+            password:
+              type: string
+              format: password
+        examples:
+          default:
+            value:
+              email: admin@example.com
+              password: change-me
+  responses:
+    '200':
+      description: Session created.
+      content:
+        application/json:
+          examples:
+            success:
+              externalValue: ../examples/login-success.json
+    '401':
+      description: Invalid credentials.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/error-response.yaml'
+          examples:
+            invalid_credentials:
+              externalValue: ../examples/error-invalid-credentials.json

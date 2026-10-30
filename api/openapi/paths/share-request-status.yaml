@@ -1,0 +1,32 @@
+get:
+  summary: Coarse access-request status for an email (share-gateway).
+  description: |
+    Returns the coarse access-request status for the `email` query
+    parameter on this share. Deliberately minimal to bound the
+    enumeration value: a caller already holds the share token (a
+    capability) and is told only `none`, `pending`, `approved`, or
+    `denied` for the email they name. It NEVER returns decision metadata,
+    the deciding owner, recipient ids, the passcode, or any file metadata.
+
+    `approved` reflects CURRENT access, not the historical request status:
+    it is returned only while the email is an ACTIVE recipient. If the
+    recipient is later revoked (or is missing, e.g. after a restore of an
+    approved row whose recipient is gone), the status reverts to `none` —
+    the requester is never told they still have access they no longer
+    have. `pending` and `denied` reflect the open/most-recent request;
+    `expired` / `superseded` collapse to `none`.
+  parameters:
+    - in: path
+      name: token
+      required: true
+      schema: { type: string }
+    - in: query
+      name: email
+      required: true
+      schema: { type: string, format: email }
+  responses:
+    '200':
+      description: |
+        Coarse status. Body is `{ "status": "none|pending|approved|denied" }`.
+    '400': { description: Missing or invalid email. }
+    '404': { description: Share not found. }

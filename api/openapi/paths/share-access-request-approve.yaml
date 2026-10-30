@@ -1,0 +1,47 @@
+post:
+  summary: Approve a pending access request.
+  description: |
+    Adds (or reactivates) the requester as a recipient under the share's
+    EXISTING restricted policy and marks the request `approved`. This is
+    NOT authorization: no claim is issued, so the requester must still
+    complete `POST /s/{token}/verify` (and OTP, when required) before any
+    download. A freshly-minted passcode is returned exactly once for the
+    owner to transmit out-of-band; it is never stored in clear or returned
+    again.
+
+    Fulfillability is re-checked at decision time (the share may have
+    expired, been revoked or purged, the file may have been deleted, the
+    staged object may be missing, or the requester's domain may not be in
+    the allowlist). On any such block the request is left pending, a
+    `shares.access_request_blocked` audit event is emitted with
+    `phase=approve` and a `reason`, and a 4xx is returned.
+
+    Approving an email that maps to a previously-revoked recipient
+    reactivates that recipient with a fresh passcode and sets
+    `reactivated=true` (audited as `shares.recipient_reactivated`).
+    Approving an email already active as a recipient links the request to
+    that recipient and mints no new passcode.
+
+    Emits `shares.access_request_approved`; new recipients additionally
+    emit `shares.recipient_added`.
+  parameters:
+    - in: path
+      name: id
+      required: true
+      schema: { type: string }
+    - in: path
+      name: arid
+      required: true
+      schema: { type: string }
+  responses:
+    '200':
+      description: |
+        Approved. Body carries the updated request, the recipient, the
+        one-shot `passcode` (when minted), and `reactivated`.
+    '400': { description: Requester domain is not in the allowlist. }
+    '404': { description: Share or access request not found / not owned. }
+    '409':
+      description: |
+        Request is not pending, or the share is no longer fulfillable
+        (revoked / expired / purged / deleted file / missing object).
+    '503': { description: Access requests are not configured on this deployment. }

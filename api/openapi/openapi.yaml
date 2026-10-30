@@ -1,0 +1,175 @@
+openapi: 3.1.0
+info:
+  title: Storage Boxes API
+  version: 0.5.0
+  description: |
+    HTTP API for the Storage Boxes platform. Authenticated session
+    cookies carry a double-submit CSRF token on writes. Vault writes
+    additionally require an `X-Unlock-Session` header pointing at an
+    active box unlock session.
+
+    Shares come in two modes. `access_mode=public` (the default) is the
+    original temporary capability link; anyone with `GET /s/{token}`
+    can download until TTL or the max-download cap is hit.
+    `access_mode=restricted` is recipient-scoped: per-recipient
+    passcodes are minted at create time and the gateway's
+    `POST /s/{token}/verify` must succeed before any download. The
+    recipient/claim lifecycle has its own audit event vocabulary —
+    see `docs/implementation/shares.md` and
+    `docs/implementation/audit.md`.
+
+    A visitor who isn't an allowed recipient of a restricted share can
+    submit an owner-approved access request via
+    `POST /s/{token}/request-access`. An access request is NOT
+    verification, a claim, or authorization: after the owner approves it
+    (`POST /api/v1/shares/{id}/access-requests/{arid}/approve`), the
+    requester is added/reactivated as a recipient and must still complete
+    the normal verify -> claim -> delivery flow. Public request endpoints
+    return only a coarse status and never expose owner data, internal
+    ids, secrets, or file metadata.
+  license:
+    name: internal
+paths:
+  /healthz:
+    get:
+      summary: Liveness probe.
+      responses:
+        '200':
+          description: Runtime process is alive.
+  /readyz:
+    get:
+      summary: Readiness probe.
+      responses:
+        '200':
+          description: Runtime dependencies are ready.
+        '503':
+          description: Dependencies unavailable.
+  /api/v1/auth/login:
+    $ref: './paths/auth-login.yaml'
+  /api/v1/auth/logout:
+    $ref: './paths/auth-logout.yaml'
+  /api/v1/auth/me:
+    $ref: './paths/auth-me.yaml'
+  /api/v1/users:
+    $ref: './paths/users.yaml'
+  /api/v1/boxes:
+    $ref: './paths/boxes.yaml'
+  /api/v1/boxes/{id}:
+    $ref: './paths/box.yaml'
+  /api/v1/boxes/{id}/sessions:
+    $ref: './paths/box-sessions.yaml'
+  /api/v1/boxes/{id}/sessions/{sessionId}:
+    $ref: './paths/box-session-lock.yaml'
+  /api/v1/boxes/{id}/files:
+    $ref: './paths/box-files.yaml'
+  /api/v1/boxes/{id}/files/{fileId}/content:
+    $ref: './paths/box-file-content.yaml'
+  /api/v1/boxes/{id}/folders:
+    $ref: './paths/box-folders.yaml'
+  /api/v1/boxes/{id}/files/move:
+    $ref: './paths/box-files-move.yaml'
+  /api/v1/shares:
+    $ref: './paths/shares.yaml'
+  /api/v1/shares/{id}:
+    $ref: './paths/share.yaml'
+  /api/v1/shares/{id}/access:
+    $ref: './paths/share-access.yaml'
+  /api/v1/shares/{id}/recipients:
+    $ref: './paths/share-recipients.yaml'
+  /api/v1/shares/{id}/recipients/{rid}:
+    $ref: './paths/share-recipient.yaml'
+  /api/v1/shares/{id}/recipients/{rid}/rotate:
+    $ref: './paths/share-recipient-rotate.yaml'
+  /api/v1/shares/{id}/recipients/{rid}/activity:
+    $ref: './paths/share-recipient-activity.yaml'
+  /api/v1/shares/{id}/challenges:
+    $ref: './paths/share-challenges.yaml'
+  /api/v1/shares/{id}/claims:
+    $ref: './paths/share-claims.yaml'
+  /api/v1/shares/{id}/claims/{cid}:
+    $ref: './paths/share-claim.yaml'
+  /api/v1/shares/{id}/access-requests:
+    $ref: './paths/share-access-requests.yaml'
+  /api/v1/shares/{id}/access-requests/{arid}/approve:
+    $ref: './paths/share-access-request-approve.yaml'
+  /api/v1/shares/{id}/access-requests/{arid}/deny:
+    $ref: './paths/share-access-request-deny.yaml'
+  /s/{token}/verify:
+    $ref: './paths/share-verify.yaml'
+  /s/{token}/otp:
+    $ref: './paths/share-otp.yaml'
+  /s/{token}/revoke-claim:
+    $ref: './paths/share-revoke-claim.yaml'
+  /s/{token}/request-access:
+    $ref: './paths/share-request-access.yaml'
+  /s/{token}/request-status:
+    $ref: './paths/share-request-status.yaml'
+  /api/v1/audit/events:
+    $ref: './paths/audit-events.yaml'
+  /api/v1/admin/ping:
+    $ref: './paths/admin.yaml'
+  /s/{token}:
+    get:
+      summary: Download a staged share object by public capability token.
+      description: |
+        Served by the `share-gateway` process, unauthenticated. Enforces
+        `status == active`, `expires_at > now`, and `download_count <
+        max_downloads`. Each access (success or denied) is appended to
+        `share_access_events` with IP/UA/risk score.
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Share content stream.
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+            Cache-Control:
+              schema: { type: string, example: 'no-store' }
+        '404':
+          description: Share not found, expired, revoked, purged, or exhausted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    head:
+      summary: Probe a share without incrementing the download counter.
+      description: |
+        RFC 9110 § 9.3.2 semantics: returns the same headers as GET
+        (Content-Type, Content-Disposition, Content-Length,
+        Cache-Control, security headers) but no body, and — unlike
+        GET — has no side effects: `download_count` is unchanged and
+        no `share_access_events` success row is recorded. Denied
+        probes (expired / revoked / exhausted) still emit an access
+        row with `succeeded=false` so probe-style scrapers remain
+        visible.
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200': { description: Share is deliverable. }
+        '404': { description: Share not found or not available. }
+components:
+  securitySchemes:
+    session_cookie:
+      type: apiKey
+      in: cookie
+      name: sb_session
+    csrf_header:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+    unlock_header:
+      type: apiKey
+      in: header
+      name: X-Unlock-Session
+  schemas:
+    ErrorResponse:
+      $ref: './schemas/error-response.yaml'

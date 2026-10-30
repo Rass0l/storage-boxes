@@ -1,0 +1,12 @@
+{
+  "items": [
+    {
+      "id": "usr_01",
+      "email": "admin@example.com"
+    },
+    {
+      "id": "usr_02",
+      "email": "operator@example.com"
+    }
+  ]
+}

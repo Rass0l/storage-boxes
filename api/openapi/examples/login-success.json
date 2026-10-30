@@ -1,0 +1,9 @@
+{
+  "user": {
+    "id": "usr_0123456789abcdef",
+    "email": "admin@example.local",
+    "display_name": "Seed Admin",
+    "roles": ["admin"]
+  },
+  "csrf_token": "YW5vbnltb3VzLWNzcmYtdG9rZW4tc2FtcGxl"
+}

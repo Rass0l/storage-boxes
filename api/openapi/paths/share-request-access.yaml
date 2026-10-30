@@ -1,0 +1,68 @@
+get:
+  summary: Public request-access form (share-gateway).
+  description: |
+    Renders a minimal HTML form a non-recipient uses to ask the share
+    owner for access. Served by the share-gateway binary. The verify page
+    links here ("Not on the list? Request access"). Exposes nothing about
+    the share's contents.
+  parameters:
+    - in: path
+      name: token
+      required: true
+      schema: { type: string }
+  responses:
+    '200': { description: HTML request-access form. }
+post:
+  summary: Submit an access request for a restricted share.
+  description: |
+    Records a PENDING access request for the supplied email (plus an
+    optional message). Submitting grants NOTHING: the owner must approve,
+    and even then the requester must complete the normal verification
+    flow. Public shares reject this (`share_not_restricted`); a
+    non-deliverable share returns `share_not_available`.
+
+    The response carries ONLY a coarse `status` — never internal ids,
+    owner data, decision metadata, secrets, or private file metadata.
+    Status values: `pending` (new or existing open request),
+    `recipient_active` (the email is already an allowed recipient — just
+    verify). A request from a domain outside the share's allowlist is
+    rejected up front (`domain_not_allowed`) rather than parked as an
+    un-approvable pending row. Submissions are rate-limited per
+    (share, IP). Duplicate submissions while a request is pending do not
+    create a second row.
+
+    Emits `shares.access_requested` on creation;
+    `shares.access_request_duplicate` on a duplicate; and
+    `shares.access_request_blocked` (with a reason) when rejected for
+    domain / availability / rate-limit.
+  parameters:
+    - in: path
+      name: token
+      required: true
+      schema: { type: string }
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [email]
+          properties:
+            email:   { type: string, format: email }
+            message: { type: string }
+      application/x-www-form-urlencoded:
+        schema:
+          type: object
+          required: [email]
+          properties:
+            email:   { type: string, format: email }
+            message: { type: string }
+  responses:
+    '202':
+      description: |
+        Request recorded (or already pending). Body is `{ "status": "..." }`
+        with a coarse status only. HTML clients receive a confirmation page.
+    '400': { description: Missing or invalid email. }
+    '403': { description: Requester domain is not in the allowlist, or rate limited. }
+    '404': { description: Share not found or not available. }
+    '409': { description: Share is not restricted (public links need no request). }

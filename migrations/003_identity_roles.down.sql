@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS role_bindings;
+DROP TABLE IF EXISTS roles;

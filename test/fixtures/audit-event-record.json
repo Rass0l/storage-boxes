@@ -1,0 +1,7 @@
+{
+  "id": "aev_01",
+  "event_type": "share.created",
+  "actor_id": "usr_01",
+  "target_id": "shr_01",
+  "occurred_at": "2026-04-14T12:05:00Z"
+}

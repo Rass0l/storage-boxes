@@ -1,0 +1,44 @@
+# Build artefacts
+dist/
+tmp/
+coverage/
+*.test
+*.out
+
+# Local runtime state and recovery artifacts
+.box-storage*/
+.share-stage*/
+/backups/
+/data/
+*.dump
+*.log
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+/web/test-results/
+/web/playwright-report/
+
+# Dependency directories
+node_modules/
+
+# Local environment files (only explicit examples are publishable)
+.env
+.env.*
+*.env
+!.env.example
+!.env.test.example
+/env
+/env.*
+/REVIVAL-STATUS.md
+/worker
+/share-gateway
+/migrate
+*.exe
+*.dll
+*.pem
+*.key
+*.p12
+*.pfx
+/deployments/compose/edge/tls/
+/.local-ca/

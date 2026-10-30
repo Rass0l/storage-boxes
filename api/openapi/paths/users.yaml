@@ -1,0 +1,10 @@
+get:
+  summary: List users visible to the current operator.
+  responses:
+    '200':
+      description: User list.
+      content:
+        application/json:
+          examples:
+            users:
+              externalValue: ../examples/user-list-response.json

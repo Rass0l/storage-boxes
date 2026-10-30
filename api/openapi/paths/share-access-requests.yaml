@@ -1,0 +1,47 @@
+get:
+  summary: List access requests for a restricted share.
+  description: |
+    Returns the owner-approved access requests filed against this share,
+    newest first. Creator-only (ownership enforced by the service). An
+    access request is NOT verification, a claim, or authorization — it is
+    a visitor asking the owner to be added as a recipient. After approval
+    the requester must still complete the normal passcode -> claim ->
+    delivery flow.
+
+    Optional `status` query parameter filters to one of `pending`,
+    `approved`, `denied`, `expired`, `superseded`. Omitting it returns all
+    statuses so the owner can audit pending, approved, denied, expired,
+    and revoked/superseded requests in one place.
+
+    This owner-facing surface returns full request detail (status,
+    decision metadata, requester email/domain, enrichment). It is distinct
+    from the public `/s/{token}/request-status` endpoint, which returns
+    only a coarse status.
+
+    Each row also carries `recipient_state` — the CURRENT state of the
+    recipient an approval linked (`active` | `revoked` | `missing`). The
+    `status` field is the historical decision (preserved for compliance);
+    `recipient_state` is current truth, so an approved request whose
+    recipient was later revoked reads as `status=approved` +
+    `recipient_state=revoked` rather than implying live access.
+  parameters:
+    - in: path
+      name: id
+      required: true
+      schema: { type: string }
+    - in: query
+      name: status
+      required: false
+      schema:
+        type: string
+        enum: [pending, approved, denied, expired, superseded]
+    - in: query
+      name: limit
+      required: false
+      schema: { type: integer, default: 100, maximum: 500 }
+  responses:
+    '200':
+      description: Access request list.
+    '400': { description: Unknown status filter. }
+    '404': { description: Share not found or not owned by caller. }
+    '503': { description: Access requests are not configured on this deployment. }

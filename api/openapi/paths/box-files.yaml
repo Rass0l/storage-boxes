@@ -1,0 +1,71 @@
+parameters:
+  - in: path
+    name: id
+    required: true
+    schema: { type: string }
+get:
+  summary: List every entry in the box (files + folders).
+  description: Requires an active unlock session via `X-Unlock-Session`.
+  responses:
+    '200':
+      description: Full file tree. Clients filter by `cwd` prefix locally.
+      content:
+        application/json:
+          examples:
+            tree:
+              externalValue: ../examples/file-tree-response.json
+put:
+  summary: Upload or replace a file at the given logical path.
+  description: |
+    Body is the raw bytes to encrypt. The parent folder must already exist.
+    Capped at 100 MiB. Requires an active unlock session.
+  parameters:
+    - in: query
+      name: path
+      required: true
+      schema: { type: string, example: /work/note.txt }
+  requestBody:
+    required: true
+    content:
+      application/octet-stream: {}
+  responses:
+    '201':
+      description: File created.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              entry:
+                type: object
+    '400':
+      description: Missing parent, bad path, or body exceeds size cap.
+      content:
+        application/json:
+          schema: { $ref: '../schemas/error-response.yaml' }
+    '409':
+      description: An entry already exists at that path.
+      content:
+        application/json:
+          schema: { $ref: '../schemas/error-response.yaml' }
+delete:
+  summary: Delete the entry at the given logical path.
+  description: |
+    Files remove their encrypted blob too. Folders must be empty.
+  parameters:
+    - in: query
+      name: path
+      required: true
+      schema: { type: string }
+  responses:
+    '204': { description: Deleted. }
+    '404':
+      description: No entry at that path.
+      content:
+        application/json:
+          schema: { $ref: '../schemas/error-response.yaml' }
+    '409':
+      description: Folder is not empty.
+      content:
+        application/json:
+          schema: { $ref: '../schemas/error-response.yaml' }

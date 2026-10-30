@@ -1,0 +1,46 @@
+post:
+  summary: Complete the OTP step for a pending restricted-share claim.
+  description: |
+    Requires the pending `sb_share_claim` cookie set by the preceding
+    passcode verify. On success, flips the claim's OTP-pending flag
+    and the cookie becomes an active claim that authorizes download.
+    Emits `shares.challenge_succeeded` (kind=otp) + `shares.claim_issued`.
+  parameters:
+    - in: path
+      name: token
+      required: true
+      schema: { type: string }
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [otp]
+          properties:
+            otp: { type: string }
+      application/x-www-form-urlencoded:
+        schema:
+          type: object
+          required: [otp]
+          properties:
+            otp: { type: string }
+  responses:
+    '200':
+      description: Claim now active.
+      headers:
+        Set-Cookie:
+          schema: { type: string }
+          description: |
+            `sb_share_claim=<opaque>; HttpOnly; SameSite=Strict;
+            Path=/s/{token}` (plus `Secure` on production HTTPS
+            deployments). Replaces the pending cookie with one that
+            authorizes `GET /s/{token}` downloads.
+    '303':
+      description: Verified (HTML flow).
+      headers:
+        Set-Cookie:
+          schema: { type: string }
+          description: Same claim cookie as the 200 response body.
+    '401': { description: OTP mismatch or expired. }
+    '409': { description: Claim is not OTP-pending. }

@@ -1,0 +1,72 @@
+get:
+  summary: Fetch a single share by id.
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema: { type: string }
+  responses:
+    '200':
+      description: Share detail.
+      content:
+        application/json:
+          examples:
+            share_detail:
+              externalValue: ../examples/share-detail-response.json
+    '404': { description: Not found or not owned by caller. }
+patch:
+  summary: Update the settings of an active share.
+  description: |
+    Mutates `expires_at` and/or `max_downloads` on a share whose
+    current status is `active`. Missing fields are left unchanged.
+    `max_downloads` must be ≥ current `download_count` so that a
+    settings change cannot retroactively exhaust the share;
+    negative values are rejected.
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema: { type: string }
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            expiry_seconds:
+              type: integer
+              format: int64
+              description: When > 0, rewrites `expires_at` to `now + seconds`. Must land before MaxTTL from now.
+            max_downloads:
+              type: integer
+              nullable: true
+              description: Supplied → update cap. Omit / `null` → leave unchanged.
+  responses:
+    '200':
+      description: Share detail after the update.
+      content:
+        application/json:
+          examples:
+            share_detail:
+              externalValue: ../examples/share-detail-response.json
+    '400': { description: Validation error. }
+    '403': { description: Not the share creator. }
+    '404': { description: Not found. }
+    '409': { description: Share is not active. }
+delete:
+  summary: Revoke a share; the worker will purge the staged blob.
+  description: |
+    Stamps `purge_requested_at` first (so the worker picks the row up
+    even if the subsequent status flip errors), then transitions
+    `status` to `revoked`. The worker's share-purge job deletes the
+    staged blob and the `share_objects` row on its next run. Idempotent:
+    a second DELETE on the same share is a 204.
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema: { type: string }
+  responses:
+    '204': { description: Revoked. }
+    '404': { description: Not found or not owned by caller. }

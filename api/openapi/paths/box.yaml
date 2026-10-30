@@ -1,0 +1,19 @@
+parameters:
+  - in: path
+    name: id
+    required: true
+    schema: { type: string }
+delete:
+  summary: Delete a box and all of its contents.
+  responses:
+    '204': { description: Box deleted. }
+    '403':
+      description: Caller is not the owner.
+      content:
+        application/json:
+          schema: { $ref: '../schemas/error-response.yaml' }
+    '404':
+      description: Box not found.
+      content:
+        application/json:
+          schema: { $ref: '../schemas/error-response.yaml' }

@@ -1,0 +1,33 @@
+get:
+  summary: Query audit events.
+  description: |
+    Returns append-only `audit_events` rows matching the filter, newest
+    first. Non-admin callers are implicitly scoped to their own
+    `actor_id`.
+  parameters:
+    - name: event_type
+      in: query
+      schema: { type: string }
+    - name: subject_type
+      in: query
+      schema: { type: string, enum: [user, box, file, share] }
+    - name: subject_id
+      in: query
+      schema: { type: string }
+    - name: actor_id
+      in: query
+      schema: { type: string }
+    - name: since
+      in: query
+      schema: { type: string, format: date-time }
+    - name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+  responses:
+    '200':
+      description: Audit event page.
+      content:
+        application/json:
+          examples:
+            audit_events:
+              externalValue: ../examples/audit-event-page.json

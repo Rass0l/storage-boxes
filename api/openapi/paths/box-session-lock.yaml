@@ -1,0 +1,22 @@
+parameters:
+  - in: path
+    name: id
+    required: true
+    schema: { type: string }
+  - in: path
+    name: sessionId
+    required: true
+    schema: { type: string }
+delete:
+  summary: Close (lock) an active unlock session.
+  description: |
+    The caller must own the unlock session — another user's ID cannot close
+    the session, so a stolen session_id alone does not grant the ability to
+    lock a foreign user's box.
+  responses:
+    '204': { description: Unlock session closed (or was already gone). }
+    '403':
+      description: Unlock session belongs to another user.
+      content:
+        application/json:
+          schema: { $ref: '../schemas/error-response.yaml' }

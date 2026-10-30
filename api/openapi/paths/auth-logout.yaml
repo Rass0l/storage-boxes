@@ -1,0 +1,5 @@
+post:
+  summary: Revoke the current session cookie.
+  responses:
+    '204':
+      description: Session revoked; cookie cleared.

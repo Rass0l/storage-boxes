@@ -1,0 +1,31 @@
+{
+  "items": [
+    {
+      "id": "aud_0001",
+      "event_type": "shares.created",
+      "subject_type": "share",
+      "subject_id": "shr_0123456789abcdef",
+      "actor_id": "usr_seed_admin",
+      "occurred_at": "2026-04-17T13:00:01Z",
+      "metadata": {
+        "box_id": "box_aaaabbbb",
+        "file_id": "file_ccccdddd",
+        "expires_at": "2026-04-18T13:00:00Z",
+        "max_downloads": 3
+      }
+    },
+    {
+      "id": "aud_0002",
+      "event_type": "shares.accessed",
+      "subject_type": "share",
+      "subject_id": "shr_0123456789abcdef",
+      "occurred_at": "2026-04-17T13:05:21Z",
+      "metadata": {
+        "remote_ip": "203.0.113.42",
+        "user_agent": "Mozilla/5.0",
+        "succeeded": true,
+        "risk_score": 0
+      }
+    }
+  ]
+}

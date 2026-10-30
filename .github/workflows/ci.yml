@@ -1,0 +1,73 @@
+name: ci
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  release-metadata:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Check version, license, and notices
+        shell: pwsh
+        run: ./scripts/check-release.ps1
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Scan source for secrets
+        run: >-
+          docker run --rm --network none
+          --mount "type=bind,source=${GITHUB_WORKSPACE},target=/repo,readonly"
+          ghcr.io/gitleaks/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
+          dir --redact --no-banner /repo
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+      - name: verify
+        run: bash scripts/ci-verify.sh
+      - name: Check reachable Go vulnerabilities
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: 'web/.nvmrc'
+          cache: 'npm'
+          cache-dependency-path: 'web/package-lock.json'
+      - name: install
+        working-directory: web
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+        run: npm ci --no-audit --no-fund
+      - name: Audit dependencies
+        working-directory: web
+        run: npm audit --audit-level=low
+      - name: typecheck
+        working-directory: web
+        run: npm run typecheck
+      - name: test
+        working-directory: web
+        run: npm test -- --run
+      - name: build
+        working-directory: web
+        run: npm run build

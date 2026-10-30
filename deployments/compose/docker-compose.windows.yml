@@ -1,0 +1,49 @@
+# Windows-hosted local stack. Keep state in Docker named volumes and expose
+# only the edge on loopback. Requires Docker Compose >= 2.24.4 (!override).
+services:
+  postgres:
+    restart: unless-stopped
+  migrate:
+    env_file: !override
+      - ../../.env.windows
+  api:
+    env_file: !override
+      - ../../.env.windows
+  worker:
+    env_file: !override
+      - ../../.env.windows
+  share-gateway:
+    env_file: !override
+      - ../../.env.windows
+  edge:
+    ports: !override
+      - "127.0.0.1:${EDGE_HTTPS_PORT:-18443}:443"
+      - "127.0.0.1:${EDGE_HTTP_PORT:-18088}:80"
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1/healthz]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+  go-check:
+    profiles: [checks]
+    build:
+      context: ../..
+      dockerfile: deployments/docker/checks.Dockerfile
+  web-check:
+    profiles: [checks]
+    build:
+      context: ../..
+      dockerfile: deployments/docker/frontend.Dockerfile
+      target: build
+    command: [sh, -c, "npm run typecheck && npm test"]
+  smoke-check:
+    profiles: [checks]
+    image: node:22-alpine
+    env_file: !override
+      - ../../.env.windows
+    environment:
+      SMOKE_BASE_URL: https://edge
+    volumes:
+      - ../../scripts/compose-smoke.mjs:/checks/compose-smoke.mjs:ro
+    command: [node, /checks/compose-smoke.mjs]
+

@@ -1,0 +1,32 @@
+get:
+  summary: List access events for a share (public and restricted).
+  description: |
+    Returns up to `limit` rows from `share_access_events`, newest first.
+    Each row is append-only; `risk_score` and `country_code` are
+    populated by the enrichment pipeline at access time.
+
+    For restricted shares the `recipient_id` field is populated on
+    every row — success, denial, and stream-interrupted — so the
+    access log is directly filterable by recipient without
+    reverse-joining `share_claims`. Public-share rows leave the
+    field empty. See `docs/implementation/audit.md` for the
+    attribution rules and `docs/implementation/shares.md` for the
+    "no-open paths" table (some denied requests are intentionally
+    not recorded here — the docs table is authoritative).
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema: { type: string }
+    - name: limit
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 500, default: 100 }
+  responses:
+    '200':
+      description: Access event list.
+      content:
+        application/json:
+          examples:
+            share_access:
+              externalValue: ../examples/share-access-response.json

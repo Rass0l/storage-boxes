@@ -1,0 +1,20 @@
+post:
+  summary: Rotate a recipient's passcode.
+  description: |
+    Generates a fresh passcode, rewrites the salt+hash, and revokes
+    every active claim belonging to this recipient. Each revoked
+    claim produces a `shares.claim_revoked` audit event with
+    `reason=passcode_rotated`. The raw passcode is returned exactly
+    once; transmit it out-of-band.
+  parameters:
+    - in: path
+      name: id
+      required: true
+      schema: { type: string }
+    - in: path
+      name: rid
+      required: true
+      schema: { type: string }
+  responses:
+    '200': { description: Rotated; new passcode in response body. }
+    '404': { description: Share or recipient not found. }

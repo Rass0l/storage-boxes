@@ -1,0 +1,11 @@
+{
+  "id": "shr_0123456789abcdef",
+  "box_id": "box_aaaabbbb",
+  "file_entry_id": "file_ccccdddd",
+  "status": "active",
+  "expires_at": "2026-04-18T13:00:00Z",
+  "max_downloads": 3,
+  "download_count": 1,
+  "created_at": "2026-04-17T13:00:00Z",
+  "deliverable": true
+}

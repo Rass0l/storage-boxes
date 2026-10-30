@@ -1,0 +1,34 @@
+post:
+  summary: Unlock a box and create a vault unlock session.
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [password]
+          properties:
+            password:
+              type: string
+              format: password
+  responses:
+    '200':
+      description: Unlock session created. Use session_id in the X-Unlock-Session header on file requests.
+    '401':
+      description: Incorrect box password.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/error-response.yaml'
+    '429':
+      description: Unlock rate limit triggered.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/error-response.yaml'

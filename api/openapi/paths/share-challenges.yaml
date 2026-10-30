@@ -1,0 +1,25 @@
+get:
+  summary: List recent verification attempts on a restricted share.
+  description: |
+    Returns `share_challenges` rows for the share, newest first. This
+    is the share-scoped companion to
+    `/api/v1/shares/{id}/recipients/{rid}/activity` and also includes
+    challenge rows where the caller's email did not match any recipient
+    (recipient_id empty) — those are still visible here as denied
+    rows with `reason=recipient_unknown` or `reason=domain_not_allowed`.
+
+    Rows are append-only (DB trigger) and align with
+    `shares.challenge_{issued,succeeded,failed}` audit events.
+  parameters:
+    - in: path
+      name: id
+      required: true
+      schema: { type: string }
+    - in: query
+      name: limit
+      required: false
+      schema: { type: integer, default: 100, maximum: 500 }
+  responses:
+    '200': { description: Challenge list. }
+    '404': { description: Share not found or not owned by caller. }
+    '503': { description: Restricted sharing not configured. }

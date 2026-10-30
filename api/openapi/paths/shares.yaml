@@ -1,0 +1,84 @@
+get:
+  summary: List shares created by the authenticated user.
+  description: |
+    Returns up to 200 shares the caller created, newest first. Non-admin
+    callers only see their own rows.
+  responses:
+    '200':
+      description: Share list.
+      content:
+        application/json:
+          examples:
+            shares:
+              externalValue: ../examples/share-list-response.json
+post:
+  summary: Stage a new share link for a vault file.
+  description: |
+    Creates an encrypted staged copy of the file under a fresh per-share
+    key (wrapped by the server master key) and returns the raw
+    capability token exactly once. Requires an unlock session for the
+    source box via the `X-Unlock-Session` header.
+
+    When `access_mode` is `restricted`, the share is not a bearer link:
+    delivery requires recipient verification via
+    `POST /s/{token}/verify` against per-recipient passcodes returned
+    in the `recipients` field of this response (shown exactly once).
+    When omitted or `public`, the share behaves as a temporary
+    capability link (original behavior).
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [box_id, file_entry_id]
+          properties:
+            box_id:        { type: string }
+            file_entry_id: { type: string }
+            expiry_seconds:
+              type: integer
+              format: int64
+              description: TTL in seconds (default 86400, max 30 days).
+            max_downloads:
+              type: integer
+              description: Hard cap on downloads; 0 uses the service default (10).
+            access_mode:
+              type: string
+              enum: [public, restricted]
+              description: |
+                Optional. `public` (default) behaves as a temporary
+                capability link. `restricted` requires each recipient
+                to verify a passcode (and optionally an OTP) before
+                delivery; a per-share HttpOnly cookie (`sb_share_claim`)
+                is issued on success.
+            recipient_emails:
+              type: array
+              items: { type: string, format: email }
+              description: Required when `access_mode=restricted`.
+            domain_allowlist:
+              type: array
+              items: { type: string }
+              description: |
+                Optional email-domain allowlist for restricted shares.
+                Matching is case-insensitive; a leading `.` allows any
+                subdomain (e.g. `.example.com`).
+            require_otp:
+              type: boolean
+              description: |
+                When true, a successful passcode returns a pending
+                claim with a 6-digit OTP that must be submitted via
+                `POST /s/{token}/otp` before the claim becomes active.
+  responses:
+    '201':
+      description: |
+        Share created. `token` is shown once. For restricted shares,
+        `recipients` carries per-recipient passcodes — also shown once.
+      content:
+        application/json:
+          examples:
+            share_created_public:
+              externalValue: ../examples/share-create-response.json
+            share_created_restricted:
+              externalValue: ../examples/share-create-restricted-response.json
+    '400': { description: Validation error. }
+    '403': { description: Unlock session missing or box mismatch. }

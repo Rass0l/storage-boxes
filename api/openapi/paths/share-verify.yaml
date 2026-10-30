@@ -1,0 +1,107 @@
+get:
+  summary: Public verify form (share-gateway).
+  description: |
+    Renders a minimal HTML form for restricted shares. Served by the
+    share-gateway binary. JSON clients should POST directly; this
+    endpoint is intentionally server-rendered so the gateway has no
+    SPA dependency.
+  parameters:
+    - in: path
+      name: token
+      required: true
+      schema: { type: string }
+  responses:
+    '200': { description: HTML verify form. }
+  # Callers reach /verify either by navigating directly or by being
+  # redirected here from GET /s/{token} on a restricted share. Every
+  # turned-away GET — whether it presented a cookie or not — writes a
+  # share_access_events row and emits a shares.access_denied audit
+  # event before the 303 redirect. The row's `reason` distinguishes
+  # the cases:
+  #   - no cookie                       → reason=claim_required
+  #   - cookie, unknown claim row       → reason=claim_missing
+  #   - cookie, claim revoked           → reason=claim_revoked
+  #   - cookie, claim past TTL          → reason=claim_expired
+  #   - cookie, claim still OTP-pending → reason=otp_required
+  # Stale-cookie cases attribute to `recipient_id`; no-cookie cases
+  # leave it empty. HEAD stays silent per RFC 9110 § 9.3.2.
+post:
+  summary: Submit passcode for a restricted share.
+  description: |
+    Accepts `{email, passcode}` as JSON or form-encoded. On success,
+    sets the HttpOnly `sb_share_claim` cookie scoped to `/s/{token}`
+    and returns 200 (JSON) or 303 to `/s/{token}` (HTML). When the
+    share has `require_otp=true`, the response is 202 with
+    `otp_required: true` and the caller must complete
+    `POST /s/{token}/otp`.
+
+    OTP delivery: in production-like deployments the one-time code is
+    sent out-of-band by the configured dispatcher and is NOT included
+    in this response. Only in local development (no dispatcher,
+    `DevModeOTPEcho`) is an `otp` field added to the 202 body for
+    testing; it is omitted entirely otherwise. A dispatch failure
+    returns 500 rather than echoing the code.
+
+    Every attempt is appended to `share_challenges` and emits a
+    matching `shares.challenge_*` audit event with enrichment
+    (risk_score, country_code, remote_ip, user_agent).
+  parameters:
+    - in: path
+      name: token
+      required: true
+      schema: { type: string }
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [email, passcode]
+          properties:
+            email:    { type: string, format: email }
+            passcode: { type: string }
+      application/x-www-form-urlencoded:
+        schema:
+          type: object
+          required: [email, passcode]
+          properties:
+            email:    { type: string, format: email }
+            passcode: { type: string }
+  responses:
+    '200':
+      description: Verified; claim cookie set.
+      headers:
+        Set-Cookie:
+          schema:
+            type: string
+          description: |
+            `sb_share_claim=<opaque>; HttpOnly; SameSite=Strict;
+            Path=/s/{token}` (plus `Secure` on production HTTPS
+            deployments — set from APP_ENV / RequireTLS, omitted for
+            local HTTP dev so the cookie is stored). Only the cookie's
+            SHA-256 hash is stored server-side.
+    '202':
+      description: |
+        OTP required; pending claim cookie set. Body is
+        `{ "otp_required": true }`, plus an `otp` field ONLY in local
+        development (DevModeOTPEcho); production omits it because the
+        code is dispatched out-of-band.
+      headers:
+        Set-Cookie:
+          schema:
+            type: string
+          description: |
+            `sb_share_claim=<opaque-pending>; HttpOnly; SameSite=Strict;
+            Path=/s/{token}` (plus `Secure` on production HTTPS). The
+            cookie carries a claim with `otp_pending=true`; it
+            authorizes only `POST /s/{token}/otp`, not downloads.
+    '303':
+      description: Verified (HTML flow) — redirects back to /s/{token}.
+      headers:
+        Set-Cookie:
+          schema: { type: string }
+          description: Same claim cookie as the 200 response body.
+    '400': { description: Missing email or passcode. }
+    '401': { description: Verification failed (reason not disclosed). }
+    '429': { description: Rate limited (too many failures from this IP). }
+    '500': { description: OTP dispatch failed (production); the code is never echoed as a fallback. }

@@ -1,0 +1,25 @@
+{
+  "request": {
+    "id": "shr_areq_01",
+    "share_id": "shr_restrictedexample",
+    "requester_email": "carol@example.com",
+    "requester_domain": "example.com",
+    "status": "approved",
+    "recipient_id": "shr_rcp_09",
+    "decided_by": "usr_owner",
+    "decided_at": "2026-04-17T14:10:00Z",
+    "decision_reason": "owner_approved",
+    "risk_score": 0,
+    "created_at": "2026-04-17T13:20:00Z"
+  },
+  "recipient": {
+    "id": "shr_rcp_09",
+    "share_id": "shr_restrictedexample",
+    "email": "carol@example.com",
+    "email_normalized": "carol@example.com",
+    "failed_attempts": 0,
+    "created_at": "2026-04-17T14:10:00Z"
+  },
+  "passcode": "K3M9TQ2X",
+  "reactivated": false
+}

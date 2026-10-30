@@ -1,0 +1,12 @@
+get:
+  summary: Runtime ping for operators.
+  responses:
+    '200':
+      description: Ping response.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string

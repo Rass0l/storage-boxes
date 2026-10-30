@@ -1,0 +1,14 @@
+type: object
+required: [id, email]
+properties:
+  id:
+    type: string
+  email:
+    type: string
+    format: email
+  display_name:
+    type: string
+  roles:
+    type: array
+    items:
+      type: string

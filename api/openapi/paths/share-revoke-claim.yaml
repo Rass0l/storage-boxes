@@ -1,0 +1,33 @@
+post:
+  summary: Recipient-initiated claim cookie clear.
+  description: |
+    Clears the `sb_share_claim` cookie on the caller's browser. No
+    server-side state changes (the claim row is not stamped
+    `revoked_at`); this endpoint is a convenience for recipients to
+    drop a live session from a shared machine without asking the
+    creator to rotate a passcode.
+
+    Creators who want the claim actually revoked should use
+    `DELETE /api/v1/shares/{id}/claims/{cid}`, which stamps the row
+    and causes subsequent download attempts to be recorded as
+    `share_access_events` denials with `reason=claim_revoked`. That
+    endpoint is share-scoped: it verifies the caller owns `{id}` and
+    that the claim belongs to it, so a claim cannot be revoked through
+    an unrelated share.
+  parameters:
+    - in: path
+      name: token
+      required: true
+      schema: { type: string }
+  responses:
+    '204':
+      description: Cookie cleared.
+      headers:
+        Set-Cookie:
+          schema:
+            type: string
+          description: |
+            `sb_share_claim=; Max-Age=-1; HttpOnly; SameSite=Strict;
+            Path=/s/{token}` (plus `Secure` on production HTTPS). The
+            expiry attributes mirror the set-cookie so browsers reliably
+            match and drop the claim cookie for this share only.

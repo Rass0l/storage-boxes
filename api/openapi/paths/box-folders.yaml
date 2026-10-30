@@ -1,0 +1,31 @@
+parameters:
+  - in: path
+    name: id
+    required: true
+    schema: { type: string }
+post:
+  summary: Create a folder inside an unlocked box.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [logical_path]
+          properties:
+            logical_path:
+              type: string
+              description: Absolute logical path. Parent folder must already exist.
+              example: /work
+  responses:
+    '201': { description: Folder created. }
+    '400':
+      description: Invalid path or missing parent folder.
+      content:
+        application/json:
+          schema: { $ref: '../schemas/error-response.yaml' }
+    '409':
+      description: Folder already exists at that path.
+      content:
+        application/json:
+          schema: { $ref: '../schemas/error-response.yaml' }

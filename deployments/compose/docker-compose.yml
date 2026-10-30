@@ -1,0 +1,169 @@
+# Production-shaped compose stack.
+#
+# Only the `edge` service publishes host ports. Every other service
+# (api, worker, share-gateway, frontend, postgres) is reachable ONLY
+# on the docker network. This matches what a real deployment would
+# expose: one TLS-terminating ingress, everything else private.
+#
+# For local debugging (direct Postgres access, hitting api on :8082
+# without TLS, etc.), layer the dev override:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+#
+# which re-publishes the internal ports. `make compose-up` uses the
+# base file only; `make compose-up-dev` and `make compose-e2e`
+# include the override.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: storage_boxes
+    # No host port: other services reach it via `postgres:5432` on the
+    # docker network. Use `docker compose exec postgres psql …` for
+    # ad-hoc access, or layer docker-compose.dev.yml for :5432 on host.
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d storage_boxes"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: ../..
+      dockerfile: deployments/docker/migrate.Dockerfile
+    env_file:
+      - ../../.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: ../..
+      dockerfile: deployments/docker/api.Dockerfile
+    env_file:
+      - ../../.env
+    # No host port — reached via the edge at /api/*.
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - storage_boxes_data:/data/boxes
+      - share_stage_data:/data/shares
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ../..
+      dockerfile: deployments/docker/worker.Dockerfile
+    env_file:
+      - ../../.env
+    # No host port. Health + stats endpoints are accessible from
+    # inside the network (e.g. `docker compose exec worker wget -qO-
+    # http://localhost:8083/api/v1/worker/sweep-stats`).
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - storage_boxes_data:/data/boxes
+      - share_stage_data:/data/shares
+    restart: unless-stopped
+
+  share-gateway:
+    build:
+      context: ../..
+      dockerfile: deployments/docker/share-gateway.Dockerfile
+    env_file:
+      - ../../.env
+    # No host port — reached via the edge at /s/*.
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - share_stage_data:/data/shares
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ../..
+      dockerfile: deployments/docker/frontend.Dockerfile
+    # No host port — reached via the edge at /.
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # edge terminates TLS for production-facing traffic. It fronts the
+  # frontend SPA, the api (under /api/*), and the share-gateway (under
+  # /s/*) on a single 443 virtual host. For local dev run
+  # scripts/gen-dev-tls.sh to drop fullchain.pem + privkey.pem into
+  # deployments/compose/edge/tls/; for production bind-mount real certs
+  # into that same path. Trusted proxy CIDR for the edge lives in .env
+  # as TRUSTED_PROXIES and is consumed by the api + share-gateway.
+  edge:
+    image: nginx:1.30.6-alpine
+    ports:
+      # Override via EDGE_HTTPS_PORT / EDGE_HTTP_PORT in .env when these
+      # defaults conflict with something already bound on the host.
+      - "${EDGE_HTTPS_PORT:-8443}:443"
+      - "${EDGE_HTTP_PORT:-8088}:80"
+    environment:
+      EDGE_HTTPS_PORT: "${EDGE_HTTPS_PORT:-8443}"
+    volumes:
+      - ./edge/nginx.conf:/etc/nginx/nginx.conf.template:ro
+      # TLS dir is rw so the entrypoint below can self-bootstrap a
+      # self-signed cert on first boot when the operator hasn't run
+      # scripts/gen-dev-tls.sh. Production deploys should mount real
+      # certs here instead; bootstrap is a no-op when fullchain.pem
+      # already exists.
+      - ./edge/tls:/etc/nginx/tls
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        # Bootstrap a self-signed cert if the mounted dir is empty.
+        if [ ! -f /etc/nginx/tls/fullchain.pem ] || [ ! -f /etc/nginx/tls/privkey.pem ]; then
+          echo "edge: generating self-signed cert for localhost"
+          apk add --no-cache openssl >/dev/null
+          openssl req -x509 -newkey rsa:2048 -nodes \
+            -keyout /etc/nginx/tls/privkey.pem \
+            -out    /etc/nginx/tls/fullchain.pem \
+            -days 365 -subj "/CN=localhost" \
+            -addext "subjectAltName=DNS:localhost,IP:127.0.0.1" >/dev/null 2>&1
+          chmod 600 /etc/nginx/tls/privkey.pem
+        fi
+        # Render nginx.conf from the template so the HTTP→HTTPS redirect
+        # lands on the right host port. When HTTPS is 443 the port
+        # segment is collapsed so URLs stay canonical in prod.
+        port="$${EDGE_HTTPS_PORT:-443}"
+        if [ "$$port" = "443" ]; then
+          port_seg=""
+        else
+          port_seg=":$$port"
+        fi
+        sed "s|:__EDGE_HTTPS_PORT__|$$port_seg|g" \
+          /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
+        exec nginx -g 'daemon off;'
+    depends_on:
+      - api
+      - share-gateway
+      - frontend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  storage_boxes_data:
+  share_stage_data:

@@ -1,0 +1,21 @@
+delete:
+  summary: Revoke a recipient.
+  description: |
+    Stamps `revoked_at` on the recipient row and revokes any active
+    claim (recipient cookie). Each revoked claim produces a
+    `shares.claim_revoked` audit event with
+    `reason=recipient_revoked` in metadata; the recipient row itself
+    emits `shares.recipient_revoked`. The row is preserved so the
+    activity view can still show prior verification attempts.
+  parameters:
+    - in: path
+      name: id
+      required: true
+      schema: { type: string }
+    - in: path
+      name: rid
+      required: true
+      schema: { type: string }
+  responses:
+    '204': { description: Revoked. }
+    '404': { description: Share or recipient not found. }

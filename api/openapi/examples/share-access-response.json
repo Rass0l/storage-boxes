@@ -1,0 +1,35 @@
+{
+  "items": [
+    {
+      "id": "sha_0001",
+      "recipient_id": "shr_rcp_01",
+      "remote_ip": "203.0.113.42",
+      "user_agent": "Mozilla/5.0",
+      "referer": "",
+      "succeeded": true,
+      "accessed_at": "2026-04-17T13:05:21Z",
+      "risk_score": 0,
+      "country_code": ""
+    },
+    {
+      "id": "sha_0002",
+      "recipient_id": "shr_rcp_02",
+      "remote_ip": "198.51.100.7",
+      "user_agent": "curl/8.6.0",
+      "succeeded": false,
+      "accessed_at": "2026-04-17T13:07:04Z",
+      "risk_score": 45,
+      "country_code": "",
+      "metadata_note": "reason=claim_revoked in the row's metadata JSON"
+    },
+    {
+      "id": "sha_0003",
+      "remote_ip": "192.0.2.5",
+      "user_agent": "Mozilla/5.0",
+      "succeeded": true,
+      "accessed_at": "2026-04-17T13:10:00Z",
+      "risk_score": 0,
+      "country_code": ""
+    }
+  ]
+}

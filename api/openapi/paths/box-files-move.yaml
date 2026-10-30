@@ -1,0 +1,33 @@
+parameters:
+  - in: path
+    name: id
+    required: true
+    schema: { type: string }
+post:
+  summary: Move or rename a file or folder.
+  description: |
+    For folders, every descendant's logical path is rewritten atomically in
+    a single DB transaction. `target parent_id` is recomputed from the new
+    parent folder; the parent must already exist.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [from_path, to_path]
+          properties:
+            from_path: { type: string, example: /src/readme.md }
+            to_path:   { type: string, example: /docs/readme.md }
+  responses:
+    '200': { description: Moved. }
+    '400':
+      description: Invalid path or attempt to move a folder into itself.
+      content:
+        application/json:
+          schema: { $ref: '../schemas/error-response.yaml' }
+    '409':
+      description: Target path already exists.
+      content:
+        application/json:
+          schema: { $ref: '../schemas/error-response.yaml' }

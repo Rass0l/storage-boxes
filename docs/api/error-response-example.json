@@ -1,0 +1,9 @@
+{
+  "error": {
+    "code": "rate_limited",
+    "message": "Too many unlock attempts. Try again later.",
+    "meta": {
+      "retry_after_seconds": 60
+    }
+  }
+}

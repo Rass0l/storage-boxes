@@ -1,0 +1,27 @@
+parameters:
+  - in: path
+    name: id
+    required: true
+    schema: { type: string }
+  - in: path
+    name: fileId
+    required: true
+    schema: { type: string }
+get:
+  summary: Download a decrypted file's content.
+  description: Requires an active unlock session via `X-Unlock-Session`.
+  responses:
+    '200':
+      description: Plaintext bytes of the file.
+      content:
+        application/octet-stream: {}
+    '403':
+      description: Unlock session missing or for the wrong box.
+      content:
+        application/json:
+          schema: { $ref: '../schemas/error-response.yaml' }
+    '404':
+      description: File not found.
+      content:
+        application/json:
+          schema: { $ref: '../schemas/error-response.yaml' }

@@ -1,0 +1,14 @@
+type: object
+required: [error]
+properties:
+  error:
+    type: object
+    required: [code, message]
+    properties:
+      code:
+        type: string
+      message:
+        type: string
+      meta:
+        type: object
+        additionalProperties: true

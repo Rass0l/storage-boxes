@@ -1,0 +1,45 @@
+get:
+  summary: List recipients of a restricted share.
+  description: |
+    Returns all recipients for the share, including revoked ones
+    (recipient rows are preserved as audit history). Passcode material
+    is never returned — only salt+hash exist in storage.
+  parameters:
+    - in: path
+      name: id
+      required: true
+      schema: { type: string }
+  responses:
+    '200':
+      description: Recipient list.
+    '404': { description: Share not found or not owned by caller. }
+    '503': { description: Restricted sharing is not configured on this deployment. }
+post:
+  summary: Add recipients to an existing restricted share.
+  description: |
+    Per-recipient passcodes are generated server-side and returned
+    exactly once in the response. Emails are validated against the
+    share's `domain_allowlist`. Recipients are deduplicated by
+    lower-cased email.
+  parameters:
+    - in: path
+      name: id
+      required: true
+      schema: { type: string }
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [emails]
+          properties:
+            emails:
+              type: array
+              items: { type: string, format: email }
+  responses:
+    '201':
+      description: Recipients provisioned; passcodes returned once.
+    '400': { description: Validation error (invalid email or domain). }
+    '404': { description: Share not found or not owned by caller. }
+    '409': { description: Share is not restricted or is not active. }

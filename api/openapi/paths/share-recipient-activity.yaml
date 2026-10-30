@@ -1,0 +1,52 @@
+get:
+  summary: Per-recipient activity timeline (full lifecycle).
+  description: |
+    Returns a merged, newest-first timeline for a recipient combining
+    **three** durable sources so operators can read the full lifecycle
+    in one place:
+
+      - `share_challenges` rows — verification attempts, append-only
+        (kind=`challenge`).
+      - `share_access_events` rows whose `recipient_id` matches —
+        restricted-delivery successes, denials, and
+        stream-interrupted entries (kind=`access`).
+      - `audit_events` where `subject_type=share_recipient` and
+        `subject_id={rid}`, OR `subject_type=share_claim` and
+        `subject_id` is one of the recipient's claim IDs — recipient
+        and claim lifecycle transitions (kind=`lifecycle`).
+
+    Each row carries `kind`, `succeeded`, and `occurred_at`. Per-kind
+    fields:
+      - `challenge`: `challenge_kind` ("passcode"|"otp"), `reason`
+        on denials, IP / UA / country / risk_score.
+      - `access`: `reason` on denials, IP / UA / country / risk_score.
+      - `lifecycle`: `lifecycle_event` (the audit event type, e.g.
+        `shares.recipient_revoked`), `actor_id` for creator-driven
+        events. No IP / UA enrichment — a state transition isn't an
+        incoming request.
+
+    `succeeded=true` on a lifecycle row means the event is a positive
+    transition (`recipient_added`, `claim_issued`); everything else
+    is a "something was taken away" transition.
+
+    Rows align with audit events: challenges ↔ `shares.challenge_*`,
+    successful downloads ↔ `shares.accessed` (with `recipient_id` in
+    metadata), denials ↔ `shares.access_denied` (with `recipient_id`
+    when attributable — see the table in
+    `docs/implementation/audit.md`).
+  parameters:
+    - in: path
+      name: id
+      required: true
+      schema: { type: string }
+    - in: path
+      name: rid
+      required: true
+      schema: { type: string }
+    - in: query
+      name: limit
+      required: false
+      schema: { type: integer, default: 100, maximum: 500 }
+  responses:
+    '200': { description: Challenge list. }
+    '404': { description: Share or recipient not found. }

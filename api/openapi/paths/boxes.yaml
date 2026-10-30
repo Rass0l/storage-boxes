@@ -1,0 +1,38 @@
+get:
+  summary: List boxes for the current user.
+  responses:
+    '200':
+      description: Box list.
+      content:
+        application/json:
+          examples:
+            boxes:
+              externalValue: ../examples/box-list-response.json
+post:
+  summary: Create a new storage box.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [name, size_bytes, password]
+          properties:
+            name:
+              type: string
+            size_bytes:
+              type: integer
+              format: int64
+            password:
+              type: string
+              format: password
+              minLength: 8
+  responses:
+    '201':
+      description: Box created.
+    '409':
+      description: Box name conflict.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/error-response.yaml'

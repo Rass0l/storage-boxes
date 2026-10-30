@@ -1,0 +1,33 @@
+post:
+  summary: Deny a pending access request.
+  description: |
+    Marks a pending access request `denied`. The requester is never made a
+    recipient, so delivery stays blocked: a subsequent `POST
+    /s/{token}/verify` for that email fails as an unknown recipient. The
+    request row is preserved as history. Emits
+    `shares.access_request_denied`.
+
+    An optional `{ "reason": "..." }` body is recorded on the request and
+    in the audit metadata.
+  parameters:
+    - in: path
+      name: id
+      required: true
+      schema: { type: string }
+    - in: path
+      name: arid
+      required: true
+      schema: { type: string }
+  requestBody:
+    required: false
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            reason: { type: string }
+  responses:
+    '204': { description: Denied. }
+    '404': { description: Share or access request not found / not owned. }
+    '409': { description: Request is not pending. }
+    '503': { description: Access requests are not configured on this deployment. }

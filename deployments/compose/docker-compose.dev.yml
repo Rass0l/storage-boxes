@@ -1,0 +1,35 @@
+# Developer + test-suite override for docker-compose.yml.
+#
+# Layered on top of the production-shaped base file to re-publish the
+# internal service ports on localhost:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+#
+# Purpose: direct Postgres access for migrations + pg-direct tests,
+# direct api/worker/share-gateway hits for debugging, and the raw
+# frontend SPA on :5173 without going through the edge.
+#
+# Do NOT use this file in production. The base compose file is the
+# shape that should match a real deployment (edge-only host exposure,
+# everything else on the docker network).
+
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+
+  api:
+    ports:
+      - "8082:8082"
+
+  worker:
+    ports:
+      - "8083:8083"
+
+  share-gateway:
+    ports:
+      - "8084:8084"
+
+  frontend:
+    ports:
+      - "5173:80"

@@ -1,0 +1,18 @@
+{
+  "items": [
+    {
+      "id": "fil_01",
+      "kind": "folder",
+      "name": "contracts",
+      "logical_path": "/contracts"
+    },
+    {
+      "id": "fil_02",
+      "kind": "file",
+      "name": "nda.pdf",
+      "logical_path": "/contracts/nda.pdf",
+      "content_type": "application/pdf",
+      "size_bytes": 241120
+    }
+  ]
+}
